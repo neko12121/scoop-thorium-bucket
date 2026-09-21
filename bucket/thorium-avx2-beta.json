@@ -1,6 +1,6 @@
 {
   "version": "152.0.7977.55",
-  "description": "Thorium Browser (AVX2 portable build, beta)",
+  "description": "Thorium Browser AVX2 beta portable build",
   "homepage": "https://thorium.rocks",
   "license": "BSD-3-Clause",
   "notes": [
