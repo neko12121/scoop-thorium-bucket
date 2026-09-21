@@ -1,0 +1,47 @@
+name: Checkver
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  checkver:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Scoop
+        shell: powershell
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+          irm get.scoop.sh | iex
+          scoop install git
+
+      - name: Configure Git
+        shell: powershell
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add current repo as bucket
+        shell: powershell
+        run: |
+          scoop bucket add mybucket $PWD
+
+      - name: Run checkver update
+        shell: powershell
+        run: |
+          $checkver = Join-Path (scoop prefix scoop) "bin\\checkver.ps1"
+          & $checkver -u
+
+      - name: Commit and push if changed
+        shell: powershell
+        run: |
+          if (git status --porcelain) {
+            git add .
+            git commit -m "chore: auto-update manifests"
+            git push
+          }
