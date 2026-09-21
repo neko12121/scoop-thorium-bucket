@@ -5,9 +5,14 @@ on:
   schedule:
     - cron: '0 */6 * * *'
 
+permissions:
+  contents: write
+
 jobs:
   checkver:
     runs-on: windows-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout
@@ -18,7 +23,7 @@ jobs:
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
           irm get.scoop.sh | iex
-          echo "$env:USERPROFILE\scoop\shims" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "$env:USERPROFILE\scoop\shims" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           scoop install git
 
       - name: Configure Git
@@ -27,15 +32,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Add current repo as bucket
-        shell: powershell
-        run: |
-          scoop bucket add mybucket "https://github.com/${{ github.repository }}.git"
-
       - name: Run checkver update
         shell: powershell
         run: |
-          checkver mybucket/* -u
+          & "$env:USERPROFILE\scoop\apps\scoop\current\bin\checkver.ps1" -Dir "$env:GITHUB_WORKSPACE\bucket" -Update
 
       - name: Commit and push if changed
         shell: powershell
@@ -44,4 +44,6 @@ jobs:
             git add .
             git commit -m "chore: auto-update manifests"
             git push
+          } else {
+            echo "No changes"
           }
