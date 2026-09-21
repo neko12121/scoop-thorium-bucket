@@ -30,12 +30,12 @@ jobs:
       - name: Add current repo as bucket
         shell: powershell
         run: |
-          scoop bucket add mybucket $PWD
+          scoop bucket add mybucket "https://github.com/${{ github.repository }}.git"
 
       - name: Run checkver update
         shell: powershell
         run: |
-          checkver -u
+          checkver mybucket/* -u
 
       - name: Commit and push if changed
         shell: powershell
