@@ -1,5 +1,5 @@
 {
-  "version": "152.0.7977.55",
+  "version": "156.0.8078.28",
   "description": "Thorium Browser AVX2 beta portable build",
   "homepage": "https://thorium.rocks",
   "license": "BSD-3-Clause",
@@ -10,8 +10,8 @@
   ],
   "architecture": {
     "64bit": {
-      "url": "https://github.com/gz83/thorium/releases/download/M152.0.7977.55/Thorium_AVX2_152.0.7977.55.zip",
-      "hash": "d1311e8b980082e93b1cc574cc88d518fef4cc9f1adb67d49e669402c06f8364",
+      "url": "https://github.com/gz83/thorium/releases/download/M156.0.8078.28/Thorium_AVX2_156.0.8078.28.zip",
+      "hash": "cdd502a93ff21db45627a22e39c1a5ce9816f0f30fabc504fddf59a44d59d6d2",
       "extract_dir": "BIN"
     }
   },
