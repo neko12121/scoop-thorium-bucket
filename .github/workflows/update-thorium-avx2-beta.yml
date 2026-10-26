@@ -1,0 +1,101 @@
+name: Update thorium-avx2-beta
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-thorium-avx2-beta
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      UPSTREAM: gz83/thorium
+      MANIFEST: bucket/thorium-avx2-beta.json
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: 1. Check latest release of gz83/thorium
+        id: release
+        run: |
+          set -euo pipefail
+          gh api "repos/$UPSTREAM/releases/latest" > release.json
+          tag=$(jq -r '.tag_name' release.json)
+          version="${tag#M}"
+          current=$(jq -r '.version' "$MANIFEST")
+          echo "Latest tag: $tag / version: $version / current: $current"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          if [ "$version" = "$current" ]; then
+            echo "Already up to date."
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          elif [ "$(printf '%s\n%s\n' "$current" "$version" | sort -V | tail -n1)" != "$version" ]; then
+            echo "Latest release ($version) is older than manifest ($current). Skip."
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "update=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 2. Find AVX2 zip
+        id: asset
+        if: steps.release.outputs.update == 'true'
+        run: |
+          set -euo pipefail
+          url=$(jq -r '.assets[] | select(.name | test("^Thorium_AVX2_[0-9.]+\\.zip$")) | .browser_download_url' release.json | head -n1)
+          if [ -z "$url" ]; then
+            echo "::error::AVX2 zip not found in ${{ steps.release.outputs.tag }}"
+            exit 1
+          fi
+          echo "AVX2 zip: $url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: 3-4. Download zip and compute SHA256
+        id: hash
+        if: steps.release.outputs.update == 'true'
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o thorium.zip "${{ steps.asset.outputs.url }}"
+          hash=$(sha256sum thorium.zip | awk '{print $1}')
+          echo "SHA256: $hash"
+          echo "hash=$hash" >> "$GITHUB_OUTPUT"
+          rm -f thorium.zip
+
+      - name: 5. Update manifest (version / url / hash)
+        if: steps.release.outputs.update == 'true'
+        run: |
+          set -euo pipefail
+          jq --arg v "${{ steps.release.outputs.version }}" \
+             --arg u "${{ steps.asset.outputs.url }}" \
+             --arg h "${{ steps.hash.outputs.hash }}" \
+             '.version = $v
+              | .architecture."64bit".url = $u
+              | .architecture."64bit".hash = $h' \
+             "$MANIFEST" > manifest.tmp
+          mv manifest.tmp "$MANIFEST"
+          rm -f release.json
+          git diff
+
+      - name: 6. Commit and push if changed
+        if: steps.release.outputs.update == 'true'
+        run: |
+          set -euo pipefail
+          rm -f release.json
+          if git diff --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$MANIFEST"
+          git commit -m "thorium-avx2-beta: Update to version ${{ steps.release.outputs.version }}"
+          git push

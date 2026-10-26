@@ -28,7 +28,7 @@
     ]
   ],
   "checkver": {
-    "github": "gz83/thorium",
+    "github": "https://github.com/gz83/thorium",
     "regex": "M([\\d.]+)"
   },
   "autoupdate": {
